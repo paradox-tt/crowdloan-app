@@ -55,13 +55,17 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, inject } from 'vue';
 import Input from './shared/Input.vue';
 import Button from './shared/Button.vue';
 import Title from './shared/Title.vue';
 
 export default defineComponent({
-  components: { Input, Button, Title }
+  components: { Input, Button, Title },
+  setup() {
+    const api = inject('api');
+    console.log(api);
+  }
 });
 </script>
 
@@ -89,5 +93,10 @@ export default defineComponent({
   background: linear-gradient(180deg, #f0f5fb 0%, #fff 100%);
   border-radius: 0.15rem;
   box-shadow: -5px 5px 20px #d3c0e1, 5px -5px 20px #b7d1eb;
+}
+
+button:disabled,
+button[disabled] {
+  opacity: 0.5;
 }
 </style>

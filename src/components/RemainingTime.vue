@@ -48,14 +48,14 @@ export default defineComponent({
     const hours = ref<number>(0);
     const days = ref<number>(0);
     const maxDays = ref<number>(0);
-    let interval: number;
+    let timerId: number;
 
     maxDays.value = Math.floor(
       duration(props.endTime.diff(props.startTime)).asDays()
     );
 
     onMounted(() => {
-      interval = setInterval(() => {
+      timerId = setInterval(() => {
         const now = moment.utc();
         // TODO handle if now is before or after interval
         if (now >= props.startTime && now <= props.endTime) {
@@ -65,11 +65,11 @@ export default defineComponent({
           seconds.value = diff.seconds();
           days.value = Math.floor(diff.asDays());
         }
-      }, 1000);
+      }, 1000) as unknown as number;
     });
 
     onUnmounted(() => {
-      clearInterval(interval);
+      clearInterval(timerId);
     });
 
     return {
