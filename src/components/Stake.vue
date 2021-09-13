@@ -14,39 +14,56 @@
           </p>
           <div class="form-container p-12">
             <form class="p-4">
-              <Input label="Polkadot Address" type="text" required />
               <Input
+                v-model="data.polkadotAddress"
+                label="Polkadot Address"
+                type="text"
+                required
+                :validationMessage="data.errors['polkadotAddress']"
+              />
+              <Input
+                v-model="data.availableAmount"
                 label="Available Amount"
                 innerLabel="DOT"
-                type="text"
+                type="number"
                 placeholder="0"
                 disabled
                 required
               />
               <Input
+                v-model="data.stakingAmount"
                 label="Staking Amount"
                 innerLabel="DOT"
-                type="text"
+                type="number"
+                min="0"
                 placeholder="0"
-                disabled
                 required
+                :validationMessage="data.errors['stakingAmount']"
               />
-              <Input label="Referral Address (optional)" type="text" />
               <Input
+                v-model="data.referralAddress"
+                label="Referral Address (optional)"
+                type="text"
+              />
+              <Input
+                v-model="data.estimatedAmount"
                 label="Estimated Amount"
                 innerLabel="ASTA"
-                type="text"
+                type="number"
                 placeholder="0"
                 disabled
                 required
               />
               <Input
+                v-model="data.emailAddress"
                 label="Email Address (optional)"
                 type="text"
                 placeholder="youremail@example.com"
+                :validationMessage="data.errors['emailAddress']"
               />
               <Button>Stake Now</Button>
             </form>
+            {{ data }}
           </div>
         </div>
       </div>
@@ -55,16 +72,90 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, inject } from 'vue';
+import { defineComponent, inject, reactive, watch } from 'vue';
 import Input from './shared/Input.vue';
 import Button from './shared/Button.vue';
 import Title from './shared/Title.vue';
+import { StakeFormData } from '../data/StakeFormData';
+import { isValidAddressPolkadotAddress, getAccount } from '../polkadot';
+import { ApiPromise } from '@polkadot/api';
 
 export default defineComponent({
   components: { Input, Button, Title },
   setup() {
-    const api = inject('api');
-    console.log(api);
+    const data = reactive<StakeFormData>(new StakeFormData());
+    const api = inject('api') as ApiPromise;
+
+    watch(
+      () => data.emailAddress,
+      () => {
+        validateEmail(data.emailAddress ?? '');
+      }
+    );
+
+    watch(
+      () => data.polkadotAddress,
+      async () => {
+        if (validatePolkadotAddress(data.polkadotAddress)) {
+          const account = await getAccount(api, data.polkadotAddress);
+          data.availableAmount = account.data.free.toNumber() || 0;
+        }
+      }
+    );
+
+    watch(
+      () => data.stakingAmount,
+      () => {
+        validateStakingAmount(data.stakingAmount, data.availableAmount);
+      }
+    );
+
+    const validateEmail = (value: string): void => {
+      const regEx =
+        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+      if (!value || regEx.test(value)) {
+        data.errors['emailAddress'] = '';
+      } else {
+        data.errors['emailAddress'] = 'Invalid Email Address.';
+      }
+    };
+
+    const validatePolkadotAddress = (value: string): boolean => {
+      if (!value) {
+        data.errors['polkadotAddress'] = 'Polkadot address is required.';
+        return false;
+      }
+
+      const isAddressValid = isValidAddressPolkadotAddress(value);
+      if (isAddressValid) {
+        data.errors['polkadotAddress'] = '';
+      } else {
+        data.errors['polkadotAddress'] = 'Invalid Polkadot address.';
+      }
+
+      return isAddressValid;
+    };
+
+    const validateStakingAmount = (
+      stakingAmount: number,
+      availableAmount: number
+    ): void => {
+      if (stakingAmount <= 0) {
+        data.errors['stakingAmount'] =
+          'Staking amount should be greater than 0.';
+        return;
+      }
+
+      if (stakingAmount > availableAmount) {
+        data.errors['stakingAmount'] =
+          'Staking amount can not be greater than available amount.';
+        return;
+      }
+
+      data.errors['stakingAmount'] = '';
+    };
+
+    return { data };
   }
 });
 </script>
